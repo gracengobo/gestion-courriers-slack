@@ -71,7 +71,20 @@ Le dossier `scans-test` n'est pas dans Git : il faut y mettre une image PNG avec
 - Si l'analyse echoue, le service publie `echec` et le courrier se traite a la main.
 - Un message qui echoue est retente 3 fois (5 secondes d'attente), puis va dans `ia.courrier.cree.erreurs`.
 
+## gRPC
+
+Le serveur ecoute sur le port 50053 (`src/grpc.ts`). Il charge pour l'instant `proposition-proto/ia.proto`, en attendant le fichier officiel dans `proto/` (a valider avec le binome 2).
+
+- `ObtenirAnalyse` : renvoie l'analyse d'un courrier (erreur `ANALYSE_INTROUVABLE` si elle n'existe pas).
+- `EnregistrerDecision` : garde la decision humaine (`VALIDEE`, `CORRIGEE`, `REJETEE`).
+- `InterpreterRecherche` : pas encore disponible (code 12, UNIMPLEMENTED).
+
+Pour tester : `npm run dev` dans un terminal, puis `npx tsx src/test-grpc.ts` dans un autre.
+
+Le controle des droits (`DROIT_INSUFFISANT`) n'est pas fait ici : les roles sont dans le Service Workflow.
+
 ## A faire
 
 - Brancher la vraie analyse (Gemini) a la place de la version de test de `analyserTexte`.
-- Serveur gRPC `IAService` (en attente de `ia.proto`).
+- Brancher `InterpreterRecherche` (partie B).
+- Remplacer `proposition-proto/` par `proto/ia.proto` quand le binome 2 l'aura valide.
