@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Courrier {
+  id             String   @id @default(uuid())
+  numero         String   @unique
+  objet          String
+  expediteur     String
+  destinataire   String
+  contenu        String?
+  pieceJointeUrl String?
+  statut         String   @default("RECU")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("courriers")
+}

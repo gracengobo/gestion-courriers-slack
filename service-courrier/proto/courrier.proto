@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package courrier;
+
+service CourrierService {
+  rpc CreateCourrier (CreateCourrierRequest) returns (CourrierResponse);
+  rpc GetCourrier (GetCourrierRequest) returns (CourrierResponse);
+}
+
+message CreateCourrierRequest {
+  string objet = 1;
+  string expediteur = 2;
+  string destinataire = 3;
+  string contenu = 4;
+  string pieceJointeUrl = 5;
+}
+
+message GetCourrierRequest {
+  string numero = 1;
+}
+
+message CourrierResponse {
+  string id = 1;
+  string numero = 2;
+  string objet = 3;
+  string expediteur = 4;
+  string destinataire = 5;
+  string statut = 6;
+  string createdAt = 7;
+}
