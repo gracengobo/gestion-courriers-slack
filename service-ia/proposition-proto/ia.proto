@@ -1,0 +1,74 @@
+// Proposition du binome 5 pour proto/ia.proto (a valider avec le binome 2)
+// Respecte CONTRATS.md partie 4. Un champ vide veut dire "pas de valeur".
+
+syntax = "proto3";
+
+package courrier.v1;
+
+service IAService {
+  // Renvoie l'analyse deja faite d'un courrier
+  rpc ObtenirAnalyse (ObtenirAnalyseRequest) returns (ObtenirAnalyseReponse);
+
+  // Garde la decision humaine sur une analyse (BF-45)
+  rpc EnregistrerDecision (EnregistrerDecisionRequest) returns (EnregistrerDecisionReponse);
+
+  // Transforme une phrase en filtres de recherche (BF-44)
+  rpc InterpreterRecherche (InterpreterRechercheRequest) returns (InterpreterRechercheReponse);
+}
+
+message ObtenirAnalyseRequest {
+  string acteur_slack_id = 1;
+  string numero = 2;
+}
+
+message ObtenirAnalyseReponse {
+  string numero = 1;
+  string statut_analyse = 2;
+  string categorie = 3;
+  float confiance = 4;
+  string urgence = 5;
+  repeated string dates_detectees = 6;
+  string resume = 7;
+  string service_suggere = 8;
+  string justification = 9;
+  string langue_detectee = 10;
+  string brouillon_reponse = 11;
+  bool produit_par_ia = 12;
+}
+
+enum TypeDecision {
+  DECISION_NON_DEFINIE = 0;
+  VALIDEE = 1;
+  CORRIGEE = 2;
+  REJETEE = 3;
+}
+
+message EnregistrerDecisionRequest {
+  string acteur_slack_id = 1;
+  string numero = 2;
+  TypeDecision decision = 3;
+  string categorie_finale = 4;
+  string service_final = 5;
+}
+
+message EnregistrerDecisionReponse {
+  string numero = 1;
+  TypeDecision decision = 2;
+  string decide_le = 3;
+}
+
+message InterpreterRechercheRequest {
+  string acteur_slack_id = 1;
+  string phrase = 2;
+  string langue = 3;
+}
+
+message InterpreterRechercheReponse {
+  repeated string mots_cles = 1;
+  string categorie = 2;
+  string service_code = 3;
+  string urgence = 4;
+  repeated string statuts = 5;
+  string date_debut = 6;
+  string date_fin = 7;
+}
