@@ -67,3 +67,26 @@ export async function enregistrerAnalyse(
     client.release();
   }
 }
+
+// Lit l'analyse d'un courrier (null si elle n'existe pas)
+export async function lireAnalyse(numero: string) {
+  const r = await pool.query("SELECT * FROM analyses WHERE numero = $1", [numero]);
+  return r.rows[0] ?? null;
+}
+
+// Enregistre la decision humaine sur une analyse
+export async function enregistrerDecision(
+  numero: string,
+  decision: string,
+  acteurSlackId: string,
+  categorieFinale: string | null,
+  serviceFinal: string | null
+): Promise<string> {
+  const r = await pool.query(
+    `INSERT INTO decisions (numero, decision, acteur_slack_id, categorie_finale, service_final)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING decide_le`,
+    [numero, decision, acteurSlackId, categorieFinale, serviceFinal]
+  );
+  return new Date(r.rows[0].decide_le).toISOString();
+}

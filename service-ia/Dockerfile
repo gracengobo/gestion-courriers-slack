@@ -7,6 +7,7 @@ RUN npm ci
 
 COPY tsconfig.json ./
 COPY sql ./sql
+COPY proposition-proto ./proposition-proto
 COPY src ./src
 
 # cree les tables puis demarre le service
