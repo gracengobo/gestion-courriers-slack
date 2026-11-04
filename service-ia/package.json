@@ -1,0 +1,28 @@
+{
+  "name": "service-ia",
+  "version": "1.0.0",
+  "description": "Service IA : OCR, resume, classement, suggestion",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "verifier": "tsc --noEmit"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^2.32.0",
+    "@grpc/grpc-js": "^1.14.7",
+    "@grpc/proto-loader": "^0.8.1",
+    "amqplib": "^2.2.1",
+    "dotenv": "^18.0.9",
+    "minio": "^8.0.7",
+    "pg": "^8.23.1",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
