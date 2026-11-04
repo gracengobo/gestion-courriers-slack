@@ -31,3 +31,17 @@ export type Enveloppe = {
   numero: string;
   donnees: DonneesCourrierCree;
 };
+
+// Contenu du message courrier.analyse
+export type DonneesAnalyse = {
+  statutAnalyse: "ok" | "echec" | "ignore_confidentiel";
+  categorie: string | null;
+  confiance: number | null;
+  urgence: string | null;
+  datesDetectees: string[] | null;
+  resume: string | null;
+  serviceSuggere: string | null;
+  justification: string | null;
+  produitParIA: boolean;
+  langueDetectee: string | null;
+};

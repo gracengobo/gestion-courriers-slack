@@ -2,7 +2,9 @@ import amqp from "amqplib";
 import { randomUUID } from "node:crypto";
 import { config } from "./config.js";
 
+// Utilisation : npx tsx src/envoyer-test.ts [numero] [confidentiel]
 const numero = process.argv[2] ?? "CE-2026-0042";
+const confidentiel = process.argv[3] === "confidentiel";
 
 const message = {
   eventId: randomUUID(),
@@ -17,7 +19,7 @@ const message = {
     expediteur: "Mme Ngo",
     dateCourrier: "2026-11-05",
     priorite: "NORMALE",
-    confidentiel: false,
+    confidentiel: confidentiel,
     serviceCode: null,
     destinataireSlackId: null,
     agentSlackId: "U02DEF45",
@@ -35,7 +37,7 @@ canal.publish(
   { persistent: true, contentType: "application/json" }
 );
 
-console.log("[service-ia] message de test envoye : " + numero);
+console.log("[service-ia] message de test envoye : " + numero + (confidentiel ? " (confidentiel)" : ""));
 
 await canal.close();
 await connexion.close();

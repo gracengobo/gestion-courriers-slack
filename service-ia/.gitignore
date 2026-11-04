@@ -1,0 +1,4 @@
+node_modules
+.env
+scans-test/
+*.traineddata
