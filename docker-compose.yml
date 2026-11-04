@@ -1,0 +1,110 @@
+
+
+services:
+  # --- BASES DE DONNÉES POSTGRESQL ---
+  postgres-courrier:
+    image: postgres:15-alpine
+    container_name: postgres-courrier
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: courrier
+      POSTGRES_PASSWORD: courrier_dev
+      POSTGRES_DB: courrier_db
+    volumes:
+      - ./infra/init/01-courrier.sql:/docker-entrypoint-initdb.d/01-courrier.sql
+    networks:
+      - courrier-network
+
+  postgres-workflow:
+    image: postgres:15-alpine
+    container_name: postgres-workflow
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: workflow
+      POSTGRES_PASSWORD: workflow_dev
+      POSTGRES_DB: workflow_db
+    volumes:
+      - ./infra/init/02-workflow.sql:/docker-entrypoint-initdb.d/02-workflow.sql
+    networks:
+      - courrier-network
+
+  postgres-ia:
+    image: postgres:15-alpine
+    container_name: postgres-ia
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: ia
+      POSTGRES_PASSWORD: ia_dev
+      POSTGRES_DB: ia_db
+    volumes:
+      - ./infra/init/03-ia.sql:/docker-entrypoint-initdb.d/03-ia.sql
+    networks:
+      - courrier-network
+
+  postgres-notification:
+    image: postgres:15-alpine
+    container_name: postgres-notification
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: notification
+      POSTGRES_PASSWORD: notification_dev
+      POSTGRES_DB: notification_db
+    volumes:
+      - ./infra/init/04-notification.sql:/docker-entrypoint-initdb.d/04-notification.sql
+    networks:
+      - courrier-network
+
+  # --- RABBITMQ ---
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # Port AMQP pour les messages
+      - "15672:15672" # Port de l'interface web
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json
+    command: >
+      sh -c "rabbitmq-server &
+             sleep 10 &&
+             rabbitmqctl import_definitions /etc/rabbitmq/definitions.json &
+             wait"
+    networks:
+      - courrier-network
+
+  # --- MINIO (Stockage de fichiers) ---
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Interface web
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    networks:
+      - courrier-network
+
+  # --- INITIALISATION MINIO ---
+  minio-init:  
+    image:    cgr.dev/chainguard/minio-client:latest-dev
+    container_name: minio-init
+    depends_on:
+      - minio
+    volumes:
+      - ./infra/minio/init-minio.sh:/init-minio.sh
+    entrypoint: ["/bin/sh", "-c", "until mc alias set myminio http://minio:9000 minioadmin minioadmin123; do echo 'Waiting for MinIO...'; sleep 2; done; mc mb --ignore-existing myminio/scans; exit 0;"]
+    networks:
+      - courrier-network
+
+# --- RÉSEAU COMMUN ---
+networks:
+  courrier-network:
+    driver: bridge
