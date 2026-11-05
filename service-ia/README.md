@@ -74,6 +74,7 @@ Le dossier `scans-test` n'est pas dans Git : il faut y mettre une image PNG avec
 | `src/recherche.ts` | `interpreterRecherche` : phrase en langage courant vers filtres (BF-44) |
 | `src/test-analyse.ts` | Test de l'analyse sans RabbitMQ ni MinIO |
 | `src/test-recherche.ts` | Test de la recherche en langage courant |
+| `src/test-ocr.ts` | Test fichier local (PDF/JPG/PNG) -> OCR -> analyse |
 | `sql/schema.sql` | Tables de `ia_db` |
 
 ## Regles du service
@@ -102,9 +103,13 @@ Sans infrastructure, dans ce dossier :
 ```
 npx tsx src/test-analyse.ts
 npx tsx src/test-recherche.ts
+npx tsx src/test-ocr.ts scans-test/lettre.png CE-2026-0201
+npx tsx src/test-ocr.ts "chemin/vers/document.pdf" CE-2026-0202
 ```
 
-Les deux scripts affichent le resultat de chaque cas et sortent en erreur si un appel echoue.
+Les scripts affichent le resultat de chaque cas et sortent en erreur si un appel echoue.
+`test-ocr.ts` lit un fichier local (PDF, JPG ou PNG), extrait le texte puis l'analyse :
+il teste le meme chemin que le service, sans RabbitMQ ni MinIO.
 `analyserTexte` lance une erreur si le modele ne repond pas ou si le JSON est invalide :
 le service publie alors `courrier.analyse` avec `statutAnalyse = "echec"`.
 
