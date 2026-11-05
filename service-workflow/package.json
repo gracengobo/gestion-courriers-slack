@@ -1,0 +1,31 @@
+{
+  "name": "service-workflow",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "test": "tsx src/test-statuts.ts",
+    "test:grpc": "tsx src/test-grpc.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.12.6",
+    "@grpc/proto-loader": "^0.7.13",
+    "@prisma/client": "^5.19.0",
+    "amqplib": "^2.2.1",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.0",
+    "@types/node": "^20.11.0",
+    "prisma": "^5.19.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

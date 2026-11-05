@@ -1,0 +1,39 @@
+{
+  "notification": {
+    "courrier_cree": "✅ Votre courrier *{numero}* a bien été enregistré.",
+    "courrier_cree_detail": "Objet : {objet}\nExpéditeur : {expediteur}",
+    "analyse_indisponible": "ℹ️ L’analyse automatique du courrier *{numero}* n’est pas disponible ({statut}). Le courrier doit être traité manuellement.",
+    "validation_titre": "📝 Affectation proposée pour *{numero}*",
+    "validation_corps": "Objet : {objet}\nCatégorie : {categorie}\nService suggéré : {service}\nUrgence : {urgence}\nConfiance : {confiance} %\n\n_{resume}_",
+    "validation_source_ia": "_Proposition générée par IA — à valider par un humain._",
+    "bouton_valider": "Valider l’affectation",
+    "bouton_modifier": "Modifier",
+    "affecte_titre": "📬 Nouveau courrier *{numero}*",
+    "affecte_corps": "Objet : {objet}\nPriorité : {priorite}\nÉchéance : {echeance}\nAffecté par : {agent}\nService : {service}",
+    "affecte_redirection": "🔁 Le courrier *{numero}* vous a été retiré et réaffecté.\nMotif : {motif}",
+    "bouton_accuser_reception": "Accuser réception",
+    "bouton_prendre_en_charge": "Prendre en charge",
+    "bouton_cloturer": "Clôturer",
+    "bouton_rejeter": "Rejeter",
+    "bouton_archiver": "Archiver",
+    "bouton_deleguer": "Déléguer",
+    "bouton_signaler_erreur": "Signaler une erreur",
+    "statut_change": "🔄 Le courrier *{numero}* est passé de {ancien} à {nouveau}.",
+    "statut_change_detail": "Par : {acteur}\nCommentaire : {commentaire}\nMotif : {motif}",
+    "statut_courrier_titre": "📬 Courrier *{numero}*",
+    "rappel_j2": "⏰ Rappel : le courrier *{numero}* ({objet}) arrive à échéance dans 2 jours, le {echeance}.",
+    "rappel_jour": "⏰ Rappel : le courrier *{numero}* ({objet}) arrive à échéance aujourd’hui, {echeance}.",
+    "retard": "⚠️ Le courrier *{numero}* ({objet}) est en retard de {jours} jour(s) (échéance : {echeance}).",
+    "rappel_annule": "Les rappels du courrier *{numero}* sont annulés (statut {statut}).",
+    "valeur_absente": "—"
+  },
+  "statut": {
+    "ENREGISTRE": "Enregistré",
+    "AFFECTE": "Affecté",
+    "RECU": "Reçu",
+    "EN_COURS": "En cours",
+    "TRAITE": "Traité",
+    "ARCHIVE": "Archivé",
+    "REJETE": "Rejeté"
+  }
+}

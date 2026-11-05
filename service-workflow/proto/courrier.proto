@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package courrier.v1;
+
+service CourrierService {
+  rpc CreerCourrier(CreerCourrierRequest) returns (CreerCourrierResponse);
+  rpc ObtenirCourrier(ObtenirCourrierRequest) returns (Courrier);
+  rpc RechercherCourriers(RechercherCourriersRequest) returns (RechercherCourriersResponse);
+  rpc CorrigerCourrier(CorrigerCourrierRequest) returns (Courrier);
+}
+
+message PieceJointe {
+  string bucket = 1;
+  string cle = 2;
+  string nom_original = 3;
+  string type_mime = 4;
+  int64 taille_octets = 5;
+  string empreinte_sha256 = 6;
+}
+
+message Courrier {
+  string numero = 1;
+  string type = 2;
+  string objet = 3;
+  string expediteur = 4;
+  string date_courrier = 5;
+  string priorite = 6;
+  bool confidentiel = 7;
+  string service_code = 8;
+  string destinataire_slack_id = 9;
+  string agent_slack_id = 10;
+  PieceJointe piece_jointe = 11;
+  string cree_le = 12;
+}
+
+message CreerCourrierRequest {
+  string type = 1;
+  string objet = 2;
+  string expediteur = 3;
+  string date_courrier = 4;
+  string priorite = 5;
+  bool confidentiel = 6;
+  string service_code = 7;
+  string destinataire_slack_id = 8;
+  string agent_slack_id = 9;
+  string langue_destinataire = 10;
+  PieceJointe piece_jointe = 11;
+}
+
+message CreerCourrierResponse {
+  string numero = 1;
+}
+
+message ObtenirCourrierRequest {
+  string numero = 1;
+  string acteur_slack_id = 2;
+}
+
+message RechercherCourriersRequest {
+  string acteur_slack_id = 1;
+  string requete = 2;
+  string numero = 3;
+  string objet = 4;
+  string expediteur = 5;
+  string categorie = 6;
+  string service_code = 7;
+  string date_debut = 8;
+  string date_fin = 9;
+  uint32 limite = 10;
+}
+
+message RechercherCourriersResponse {
+  repeated Courrier courriers = 1;
+}
+
+message CorrigerCourrierRequest {
+  string numero = 1;
+  string acteur_slack_id = 2;
+  string objet = 3;
+  string expediteur = 4;
+  string date_courrier = 5;
+  string priorite = 6;
+  bool confidentiel = 7;
+}

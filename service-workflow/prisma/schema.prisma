@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Suivi {
+  numero                String   @id
+  type                  String   @default("ENTRANT")
+  objet                 String
+  expediteur            String
+  priorite              String   @default("NORMALE")
+  confidentiel          Boolean  @default(false)
+  serviceCode           String?
+  destinataireSlackId   String?
+  agentSlackId          String?
+  langueDestinataire    String   @default("fr")
+  statut                String   @default("ENREGISTRE")
+  version               Int      @default(1)
+  echeance              DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  historique            Historique[]
+
+  @@index([destinataireSlackId, echeance])
+  @@index([serviceCode, statut])
+  @@map("suivis")
+}
+
+model Historique {
+  id             String   @id @default(uuid())
+  numero         String
+  suivi          Suivi    @relation(fields: [numero], references: [numero], onDelete: Cascade)
+  statut         String
+  acteurSlackId  String
+  commentaire    String?
+  motif          String?
+  creeLe         DateTime @default(now())
+
+  @@index([numero, creeLe])
+  @@map("historique")
+}
+
+model Utilisateur {
+  slackId     String @id
+  role        String @default("AGENT")
+  serviceCode String?
+  langue      String @default("fr")
+
+  @@map("utilisateurs")
+}
+
+model EvenementTraite {
+  eventId String   @id
+  recuLe  DateTime @default(now())
+
+  @@map("evenements_traites")
+}
