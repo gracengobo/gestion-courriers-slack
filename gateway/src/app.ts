@@ -22,6 +22,8 @@ const STATUS_ACTIONS = [
   "signaler_erreur",
 ] as const;
 const ASSIGN_ACTIONS = ["valider_affectation", "modifier_affectation"] as const;
+// L'interpretation IA peut prendre plusieurs secondes
+const DELAI_RECHERCHE_IA_MS = 10_000;
 type StatusAction = (typeof STATUS_ACTIONS)[number];
 type AssignmentAction = (typeof ASSIGN_ACTIONS)[number];
 type Locale = "fr" | "en";
@@ -294,11 +296,15 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
           let filters: InterpreterRechercheResponse;
           let interpreterUnavailable = false;
           try {
-            filters = await callGrpc(services.ia.InterpreterRecherche.bind(services.ia), {
-              acteurSlackId: actorSlackId,
-              phrase: query,
-              langue: language,
-            });
+            filters = await callGrpc(
+              services.ia.InterpreterRecherche.bind(services.ia),
+              {
+                acteurSlackId: actorSlackId,
+                phrase: query,
+                langue: language,
+              },
+              DELAI_RECHERCHE_IA_MS,
+            );
           } catch (error) {
             if (!isGrpcStatus(error, grpc.status.UNIMPLEMENTED)) throw error;
             interpreterUnavailable = true;

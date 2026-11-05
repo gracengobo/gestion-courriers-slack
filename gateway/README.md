@@ -1,6 +1,6 @@
 # Passerelle Slack
 
-La passerelle utilise Slack Bolt en Socket Mode. Elle ne contient pas de logique métier : commandes et actions délèguent aux services gRPC décrits dans `../proto/`. Chaque appel gRPC a une échéance de deux secondes.
+La passerelle utilise Slack Bolt en Socket Mode. Elle ne contient pas de logique métier : commandes et actions délèguent aux services gRPC décrits dans `../proto/`. Chaque appel gRPC a une échéance de deux secondes, sauf `InterpreterRecherche` qui dispose de dix secondes pour laisser le temps à l'IA.
 
 ## Préparation
 

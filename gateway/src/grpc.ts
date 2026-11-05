@@ -266,12 +266,13 @@ export function createGrpcServices(
 export function callGrpc<Request extends object, Response>(
   method: UnaryMethod<Request, Response>,
   request: Request,
+  delaiMs = 2_000,
 ): Promise<Response> {
   return new Promise((resolve, reject) => {
     method(
       request,
       new grpc.Metadata(),
-      { deadline: Date.now() + 2000 },
+      { deadline: Date.now() + delaiMs },
       (error, response) => (error ? reject(error) : resolve(response)),
     );
   });
