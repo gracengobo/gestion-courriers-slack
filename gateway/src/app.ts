@@ -11,6 +11,7 @@ import {
 } from "./grpc";
 import { errorMessage } from "./messages";
 import { AttachmentStorage } from "./storage";
+import { notifierUtilisateur } from "./notify";
 
 const STATUS_ACTIONS = [
   "accuser_reception",
@@ -44,7 +45,7 @@ interface ModalValues {
       selected_option?: { value: string };
       selected_options?: Array<{ value: string }>;
       selected_date?: string;
-      selected_files?: Array<{ id: string }>;
+      files?: Array<{ id: string }>;
     };
   };
 }
@@ -98,7 +99,7 @@ function parseMetadata(value: string): ModalContext {
 }
 
 function getAttachmentId(values: ModalValues): string | undefined {
-  const selected = values["attachment_block"]?.attachment?.selected_files;
+  const selected = values["attachment_block"]?.attachment?.files;
   if (selected && selected.length > 1) {
     throw new Error("Une seule pièce jointe peut être ajoutée.");
   }
@@ -117,27 +118,6 @@ function formatCourriers(
     .slice(0, 20)
     .map((item) => `• *${item.numero}* — ${item.objet || "Sans objet"} · ${item.statut ?? "Statut indisponible"}${item.echeance ? ` · échéance ${item.echeance}` : ""}`)
     .join("\n");
-}
-
-async function postEphemeral(
-  client: WebClient,
-  channelId: string,
-  userId: string,
-  message: string,
-): Promise<void> {
-  try {
-    await client.chat.postEphemeral({ channel: channelId, user: userId, text: message });
-  } catch (error) {
-    if (!isSlackApiError(error, "not_in_channel")) throw error;
-
-    console.warn(`[gateway] bot absent du canal ${channelId}; envoi de la confirmation en message privé`);
-    const conversation = await client.conversations.open({ users: userId });
-    const dmChannelId = conversation.channel?.id;
-    if (!dmChannelId) {
-      throw new Error("Impossible d’ouvrir le message privé Slack pour transmettre la confirmation.");
-    }
-    await client.chat.postMessage({ channel: dmChannelId, text: message });
-  }
 }
 
 function openModal(
@@ -482,7 +462,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
           );
         } catch (error) {
           console.error(`[gateway] ouverture du formulaire ${actionId} échouée: ${error instanceof Error ? error.message : String(error)}`);
-          await postEphemeral(client, channelId, actorSlackId, errorMessage(error));
+          await notifierUtilisateur(client, channelId, actorSlackId, errorMessage(error));
         }
         return;
       }
@@ -533,7 +513,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
         throw error;
       }
       try {
-        await postEphemeral(client, context.channelId, context.actorSlackId, `Courrier créé : *${numero}*.`);
+        await notifierUtilisateur(client, context.channelId, context.actorSlackId, `Courrier créé : *${numero}*.`);
       } catch (notificationError) {
         console.error(
           `[gateway] courrier ${numero} créé, mais confirmation Slack impossible: ${notificationError instanceof Error ? notificationError.message : String(notificationError)}`,
@@ -543,7 +523,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
       const userId = body.user.id;
       const channelId = safeMetadataChannel(view.private_metadata);
       console.error(`[gateway] création de courrier échouée: ${error instanceof Error ? error.message : String(error)}`);
-      if (channelId) await postEphemeral(client, channelId, userId, errorMessage(error));
+      if (channelId) await notifierUtilisateur(client, channelId, userId, errorMessage(error));
     }
   });
 
@@ -563,7 +543,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
     } catch (error) {
       console.error(`[gateway] changement de statut échoué: ${error instanceof Error ? error.message : String(error)}`);
       const context = safeParseMetadata(view.private_metadata);
-      if (context) await postEphemeral(client, context.channelId, context.actorSlackId, errorMessage(error));
+      if (context) await notifierUtilisateur(client, context.channelId, context.actorSlackId, errorMessage(error));
     }
   });
 
@@ -590,7 +570,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
         serviceCode,
         motif: reason,
       });
-      await postEphemeral(
+      await notifierUtilisateur(
         client,
         context.channelId,
         context.actorSlackId,
@@ -599,7 +579,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
     } catch (error) {
       console.error(`[gateway] affectation échouée: ${error instanceof Error ? error.message : String(error)}`);
       const context = safeParseMetadata(view.private_metadata);
-      if (context) await postEphemeral(client, context.channelId, context.actorSlackId, errorMessage(error));
+      if (context) await notifierUtilisateur(client, context.channelId, context.actorSlackId, errorMessage(error));
     }
   });
 
@@ -635,7 +615,7 @@ async function handleAssignmentAction(
     );
   } catch (error) {
     console.error(`[gateway] ouverture du formulaire d’affectation échouée: ${error instanceof Error ? error.message : String(error)}`);
-    await postEphemeral(args.client, channelId, args.body.user.id, errorMessage(error));
+    await notifierUtilisateur(args.client, channelId, args.body.user.id, errorMessage(error));
   }
 }
 
@@ -664,10 +644,10 @@ async function performStatusChange(
       nouveauDestinataireSlackId: details.nouveauDestinataireSlackId ?? "",
     };
     const result = await callGrpc(services.workflow.ChangerStatut.bind(services.workflow), request);
-    await postEphemeral(client, channelId, actorSlackId, `Courrier *${result.numero}* : ${result.nouveauStatut}.`);
+    await notifierUtilisateur(client, channelId, actorSlackId, `Courrier *${result.numero}* : ${result.nouveauStatut}.`);
   } catch (error) {
     console.error(`[gateway] action ${action} pour ${numero} échouée: ${error instanceof Error ? error.message : String(error)}`);
-    await postEphemeral(client, channelId, actorSlackId, errorMessage(error));
+    await notifierUtilisateur(client, channelId, actorSlackId, errorMessage(error));
   }
 }
 
@@ -685,17 +665,6 @@ function isGrpcStatus(error: unknown, status: grpc.status): error is grpc.Servic
     "code" in error &&
     typeof error.code === "number" &&
     error.code === status
-  );
-}
-
-function isSlackApiError(error: unknown, errorCode: string): boolean {
-  if (typeof error !== "object" || error === null || !("data" in error)) return false;
-  const data = error.data;
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "error" in data &&
-    data.error === errorCode
   );
 }
 
