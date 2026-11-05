@@ -1,10 +1,9 @@
-
-
 services:
   # --- BASES DE DONNÉES POSTGRESQL ---
   postgres-courrier:
     image: postgres:15-alpine
     container_name: postgres-courrier
+    restart: unless-stopped
     ports:
       - "5433:5432"
     environment:
@@ -12,13 +11,20 @@ services:
       POSTGRES_PASSWORD: courrier_dev
       POSTGRES_DB: courrier_db
     volumes:
-      - ./infra/init/01-courrier.sql:/docker-entrypoint-initdb.d/01-courrier.sql
+      - ./infra/init/01-courrier.sql:/docker-entrypoint-initdb.d/01-courrier.sql:ro
+      - courrier-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courrier -d courrier_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     networks:
       - courrier-network
 
   postgres-workflow:
     image: postgres:15-alpine
     container_name: postgres-workflow
+    restart: unless-stopped
     ports:
       - "5434:5432"
     environment:
@@ -26,13 +32,20 @@ services:
       POSTGRES_PASSWORD: workflow_dev
       POSTGRES_DB: workflow_db
     volumes:
-      - ./infra/init/02-workflow.sql:/docker-entrypoint-initdb.d/02-workflow.sql
+      - ./infra/init/02-workflow.sql:/docker-entrypoint-initdb.d/02-workflow.sql:ro
+      - workflow-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workflow -d workflow_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     networks:
       - courrier-network
 
   postgres-ia:
     image: postgres:15-alpine
     container_name: postgres-ia
+    restart: unless-stopped
     ports:
       - "5435:5432"
     environment:
@@ -40,13 +53,20 @@ services:
       POSTGRES_PASSWORD: ia_dev
       POSTGRES_DB: ia_db
     volumes:
-      - ./infra/init/03-ia.sql:/docker-entrypoint-initdb.d/03-ia.sql
+      - ./infra/init/03-ia.sql:/docker-entrypoint-initdb.d/03-ia.sql:ro
+      - ia-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ia -d ia_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     networks:
       - courrier-network
 
   postgres-notification:
     image: postgres:15-alpine
     container_name: postgres-notification
+    restart: unless-stopped
     ports:
       - "5436:5432"
     environment:
@@ -54,7 +74,13 @@ services:
       POSTGRES_PASSWORD: notification_dev
       POSTGRES_DB: notification_db
     volumes:
-      - ./infra/init/04-notification.sql:/docker-entrypoint-initdb.d/04-notification.sql
+      - ./infra/init/04-notification.sql:/docker-entrypoint-initdb.d/04-notification.sql:ro
+      - notification-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notification -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
     networks:
       - courrier-network
 
@@ -62,6 +88,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: rabbitmq
+    restart: unless-stopped
     ports:
       - "5672:5672"   # Port AMQP pour les messages
       - "15672:15672" # Port de l'interface web
@@ -69,12 +96,15 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     volumes:
-      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json
-    command: >
-      sh -c "rabbitmq-server &
-             sleep 10 &&
-             rabbitmqctl import_definitions /etc/rabbitmq/definitions.json &
-             wait"
+      - rabbitmq-data:/var/lib/rabbitmq
+      # Charge l'échange courrier.events au démarrage (remplace l'import manuel)
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
     networks:
       - courrier-network
 
@@ -82,6 +112,7 @@ services:
   minio:
     image: cgr.dev/chainguard/minio:latest
     container_name: minio
+    restart: unless-stopped
     ports:
       - "9000:9000" # API
       - "9001:9001" # Interface web
@@ -89,18 +120,24 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
     command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
     networks:
       - courrier-network
 
-  # --- INITIALISATION MINIO ---
-  minio-init:  
-    image:    cgr.dev/chainguard/minio-client:latest-dev
+  # --- INITIALISATION MINIO (bucket scans) ---
+  minio-init:
+    image: minio/mc:latest
     container_name: minio-init
     depends_on:
       - minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
     volumes:
-      - ./infra/minio/init-minio.sh:/init-minio.sh
-    entrypoint: ["/bin/sh", "-c", "until mc alias set myminio http://minio:9000 minioadmin minioadmin123; do echo 'Waiting for MinIO...'; sleep 2; done; mc mb --ignore-existing myminio/scans; exit 0;"]
+      - ./infra/minio/init-minio.sh:/init-minio.sh:ro
+    entrypoint: ["/bin/sh", "/init-minio.sh"]
+    restart: "no"
     networks:
       - courrier-network
 
@@ -108,3 +145,12 @@ services:
 networks:
   courrier-network:
     driver: bridge
+
+# --- VOLUMES PERSISTANTS ---
+volumes:
+  courrier-data:
+  workflow-data:
+  ia-data:
+  notification-data:
+  rabbitmq-data:
+  minio-data:

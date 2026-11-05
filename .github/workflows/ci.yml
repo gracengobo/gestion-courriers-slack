@@ -1,27 +1,40 @@
-name: Tests et Vérification du Code
+name: CI
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: ["**"]
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: ["main", "develop"]
 
 jobs:
-  build:
+  verifier:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Récupérer le code
-      uses: actions/checkout@v4
+      - name: Récupérer le code
+        uses: actions/checkout@v4
 
-    - name: Installer Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-    - name: Installer les dépendances
-      run: npm ci
-
-    - name: Lancer les tests (si vous en avez)
-      run: npm test --if-present
+      - name: Vérifier chaque service Node du dépôt
+        shell: bash
+        run: |
+          set -euo pipefail
+          trouve=0
+          for manifeste in $(git ls-files '*package.json'); do
+            dossier=$(dirname "$manifeste")
+            if [ ! -f "$dossier/package-lock.json" ]; then
+              echo "::warning::$dossier sans package-lock.json, ignoré"
+              continue
+            fi
+            trouve=1
+            echo "::group::$dossier"
+            (cd "$dossier" && npm ci && npm run typecheck --if-present && npm run build --if-present)
+            echo "::endgroup::"
+          done
+          if [ "$trouve" -eq 0 ]; then
+            echo "Aucun service Node avec package-lock.json sur cette branche."
+          fi
