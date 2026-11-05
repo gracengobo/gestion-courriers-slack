@@ -1,0 +1,29 @@
+{
+  "name": "gestion-courriers-slack-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Passerelle Slack Socket Mode vers les services gRPC de gestion des courriers",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.12.6",
+    "@grpc/proto-loader": "^0.7.13",
+    "@slack/bolt": "^4.1.0",
+    "@slack/types": "^2.9.0",
+    "@slack/web-api": "^7.8.0",
+    "dotenv": "^16.4.7",
+    "minio": "^8.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
