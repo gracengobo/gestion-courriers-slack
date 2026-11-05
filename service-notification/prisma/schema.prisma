@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model EvenementTraite {
+  eventId  String   @id
+  type     String
+  traiteLe DateTime @default(now()) @map("traiteLe")
+
+  @@map("evenements_traites")
+}
+
+model CourrierNotifie {
+  numero               String    @id
+  objet                String
+  priorite             String
+  serviceCode          String?
+  agentSlackId         String?
+  destinataireSlackId  String?
+  responsableSlackId   String?
+  langue               String    @default("fr")
+  echeance             DateTime?
+  statut               String    @default("ENREGISTRE")
+  actif                Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@map("courriers_notifies")
+}
+
+model MessageSlack {
+  id                  String   @id @default(uuid())
+  numero              String
+  type                String
+  destinataireSlackId String
+  canal               String
+  ts                  String
+  createdAt           DateTime @default(now())
+
+  @@unique([numero, type, destinataireSlackId])
+  @@index([numero])
+  @@map("messages_slack")
+}
+
+model Rappel {
+  id                   String    @id @default(uuid())
+  numero               String    @unique
+  echeance             DateTime
+  objet                String
+  destinataireSlackId  String
+  responsableSlackId   String?
+  langue               String    @default("fr")
+  rappelJ2Envoye       Boolean   @default(false)
+  rappelJourEnvoye     Boolean   @default(false)
+  retardSignaleLe      DateTime?
+  actif                Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([actif, echeance])
+  @@map("rappels")
+}

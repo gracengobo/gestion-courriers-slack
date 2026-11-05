@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package courrier.v1;
+
+import "courrier.proto";
+
+service WorkflowService {
+  rpc AffecterCourrier(AffecterCourrierRequest) returns (AffecterCourrierResponse);
+  rpc ChangerStatut(ChangerStatutRequest) returns (ChangerStatutResponse);
+  rpc ObtenirHistorique(ObtenirHistoriqueRequest) returns (ObtenirHistoriqueResponse);
+  rpc ListerCourriersDuDestinataire(ListerCourriersRequest) returns (ListerCourriersResponse);
+  rpc ListerCourriersDuService(ListerCourriersServiceRequest) returns (ListerCourriersResponse);
+  rpc ObtenirStatistiques(ObtenirStatistiquesRequest) returns (ObtenirStatistiquesResponse);
+  rpc ObtenirUtilisateur(ObtenirUtilisateurRequest) returns (Utilisateur);
+  rpc DefinirLangue(DefinirLangueRequest) returns (DefinirLangueResponse);
+}
+
+message AffecterCourrierRequest {
+  string numero = 1;
+  string acteur_slack_id = 2;
+  string destinataire_slack_id = 3;
+  string service_code = 4;
+  string motif = 5;
+}
+
+message AffecterCourrierResponse {
+  string numero = 1;
+  string destinataire_slack_id = 2;
+  string statut = 3;
+  uint32 version = 4;
+}
+
+message ChangerStatutRequest {
+  string numero = 1;
+  string acteur_slack_id = 2;
+  string action = 3;
+  uint32 version_attendue = 4;
+  string commentaire = 5;
+  string motif = 6;
+  string nouveau_destinataire_slack_id = 7;
+}
+
+message ChangerStatutResponse {
+  string numero = 1;
+  string ancien_statut = 2;
+  string nouveau_statut = 3;
+  uint32 version = 4;
+}
+
+message ObtenirHistoriqueRequest {
+  string numero = 1;
+  string acteur_slack_id = 2;
+}
+
+message HistoriqueEntree {
+  string statut = 1;
+  string acteur_slack_id = 2;
+  string commentaire = 3;
+  string motif = 4;
+  string cree_le = 5;
+}
+
+message ObtenirHistoriqueResponse {
+  repeated HistoriqueEntree entrees = 1;
+  uint32 version_actuelle = 2;
+}
+
+message ListerCourriersRequest {
+  string acteur_slack_id = 1;
+  uint32 limite = 2;
+}
+
+message ListerCourriersServiceRequest {
+  string acteur_slack_id = 1;
+  string service_code = 2;
+  uint32 limite = 3;
+}
+
+message ListerCourriersResponse {
+  repeated CourrierResume courriers = 1;
+}
+
+message CourrierResume {
+  string numero = 1;
+  string objet = 2;
+  string statut = 3;
+  string priorite = 4;
+  string destinataire_slack_id = 5;
+  string echeance = 6;
+  uint32 version = 7;
+}
+
+message ObtenirStatistiquesRequest {
+  string acteur_slack_id = 1;
+  string service_code = 2;
+}
+
+message ObtenirStatistiquesResponse {
+  uint32 total = 1;
+  uint32 enregistres = 2;
+  uint32 affectes = 3;
+  uint32 en_cours = 4;
+  uint32 traites = 5;
+  uint32 en_retard = 6;
+}
+
+message ObtenirUtilisateurRequest {
+  string slack_id = 1;
+  string acteur_slack_id = 2;
+}
+
+message Utilisateur {
+  string slack_id = 1;
+  string role = 2;
+  string service_code = 3;
+  string langue = 4;
+}
+
+message DefinirLangueRequest {
+  string acteur_slack_id = 1;
+  string langue = 2;
+}
+
+message DefinirLangueResponse {
+  string slack_id = 1;
+  string langue = 2;
+}
