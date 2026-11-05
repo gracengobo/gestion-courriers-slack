@@ -9,7 +9,6 @@ const FILES = [
   { nom: "notification.courrier.affecte", cle: "courrier.affecte" },
   { nom: "notification.courrier.statut_change", cle: "courrier.statut_change" },
 ];
-const FILE_ERREURS = "notification.courrier.erreurs";
 const NB_TENTATIVES = 3;
 const ATTENTE_MS = 5000;
 
@@ -25,13 +24,14 @@ export async function connecterRabbit(): Promise<{ connexion: amqp.ChannelModel;
   for (const file of FILES) {
     await canal.assertQueue(file.nom, { durable: true });
     await canal.bindQueue(file.nom, config.exchange, file.cle);
+    await canal.assertQueue(`${file.nom}.erreurs`, { durable: true });
   }
-  await canal.assertQueue(FILE_ERREURS, { durable: true });
 
   return { connexion, canal };
 }
 
 async function consommer(canal: Channel, file: string): Promise<void> {
+  const fileErreurs = `${file}.erreurs`;
   await canal.consume(file, async (brut: ConsumeMessage | null) => {
     if (!brut) return;
 
@@ -40,9 +40,9 @@ async function consommer(canal: Channel, file: string): Promise<void> {
       message = JSON.parse(brut.content.toString("utf-8")) as Enveloppe<unknown>;
     } catch {
       console.error(
-        `[service-notification] message illisible dans ${file}, envoyé dans ${FILE_ERREURS}`,
+        `[service-notification] message illisible dans ${file}, envoyé dans ${fileErreurs}`,
       );
-      canal.sendToQueue(FILE_ERREURS, brut.content, { persistent: true });
+      canal.sendToQueue(fileErreurs, brut.content, { persistent: true });
       canal.ack(brut);
       return;
     }
@@ -62,9 +62,9 @@ async function consommer(canal: Channel, file: string): Promise<void> {
       }
     }
 
-    canal.sendToQueue(FILE_ERREURS, brut.content, { persistent: true });
+    canal.sendToQueue(fileErreurs, brut.content, { persistent: true });
     canal.ack(brut);
-    console.error(`[service-notification] ${message.numero} envoyé dans ${FILE_ERREURS}`);
+    console.error(`[service-notification] ${message.numero} envoyé dans ${fileErreurs}`);
   });
 }
 

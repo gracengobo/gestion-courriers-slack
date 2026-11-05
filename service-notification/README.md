@@ -78,7 +78,9 @@ du Workflow) ou dans le suivi local, avec repli sur le français.
 | `notification.courrier.analyse` | `courrier.analyse` |
 | `notification.courrier.affecte` | `courrier.affecte` |
 | `notification.courrier.statut_change` | `courrier.statut_change` |
-| `notification.courrier.erreurs` | Messages illisibles ou échoués après 3 tentatives |
+
+Chaque file possède sa file d'erreurs `<nom de la file>.erreurs` qui reçoit les
+messages illisibles ou échoués après 3 tentatives (5 secondes entre chaque).
 
 Chaque `eventId` est enregistré dans `evenements_traites` : un doublon est
 ignoré.
