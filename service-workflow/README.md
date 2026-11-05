@@ -60,7 +60,10 @@ npm start
 
 ## Échéances et statuts
 
-- Échéance : jours ouvrés à partir de la réception, fixée à 16:00 UTC.
+- Échéance : jours ouvrés à partir de la réception, fixée à 16:00 UTC, ou
+  48 heures pour une priorité `HAUTE`.
+- Langue : `langueDestinataire` est reprise de l'utilisateur dans
+  `workflow_db` (repli `fr`) et transmise dans `courrier.affecte`.
 - Transitions autorisées :
 
 | Action | Statut de départ | Statut d'arrivée | Condition |

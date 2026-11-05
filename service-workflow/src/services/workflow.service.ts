@@ -64,6 +64,12 @@ export async function lireUtilisateur(slackId: string) {
   });
 }
 
+async function langueDuDestinataire(slackId: string | null | undefined): Promise<string> {
+  if (!slackId) return "fr";
+  const utilisateur = await prisma.utilisateur.findUnique({ where: { slackId } });
+  return utilisateur?.langue ?? "fr";
+}
+
 export async function enregistrerCourrierCree(
   numero: string,
   donnees: DonneesCourrierCree,
@@ -71,6 +77,8 @@ export async function enregistrerCourrierCree(
 ): Promise<boolean> {
   const affecte = Boolean(donnees.destinataireSlackId);
   const priorite = donnees.priorite || "NORMALE";
+  const langueDestinataire =
+    donnees.langueDestinataire || (await langueDuDestinataire(donnees.destinataireSlackId));
   const echeance = calculerEcheance(priorite, new Date(), config.delaiOuvrableJours);
   const acteur = donnees.agentSlackId || "service-courrier";
   let cree = false;
@@ -94,7 +102,7 @@ export async function enregistrerCourrierCree(
           serviceCode: donnees.serviceCode || null,
           destinataireSlackId: donnees.destinataireSlackId || null,
           agentSlackId: donnees.agentSlackId || null,
-          langueDestinataire: donnees.langueDestinataire || "fr",
+          langueDestinataire,
           statut: affecte ? "AFFECTE" : "ENREGISTRE",
           version: affecte ? 2 : 1,
           echeance,
@@ -140,7 +148,7 @@ export async function enregistrerCourrierCree(
         priorite,
         confidentiel: donnees.confidentiel ?? false,
         agentSlackId: donnees.agentSlackId || null,
-        langueDestinataire: donnees.langueDestinataire || "fr",
+        langueDestinataire,
       }),
     );
   }
@@ -213,12 +221,14 @@ export async function affecter(input: AffecterInput) {
     );
   }
 
+  const langueDestinataire = await langueDuDestinataire(input.destinataireSlackId);
   const maj = await prisma.$transaction(async (transaction) => {
     const courrier = await transaction.suivi.update({
       where: { numero: input.numero },
       data: {
         destinataireSlackId: input.destinataireSlackId,
         serviceCode: input.serviceCode || suivi.serviceCode,
+        langueDestinataire,
         statut: "AFFECTE",
         version: { increment: 1 },
       },
@@ -310,13 +320,19 @@ export async function changerStatut(input: ChangerStatutInput) {
   }
 
   const delegation = input.action === "deleguer";
+  const langueDelegue = delegation
+    ? await langueDuDestinataire(input.nouveauDestinataireSlackId)
+    : null;
   const maj = await prisma.$transaction(async (transaction) => {
     const courrier = await transaction.suivi.update({
       where: { numero: input.numero },
       data: {
         statut: resultat.statutSuivant,
         ...(delegation
-          ? { destinataireSlackId: input.nouveauDestinataireSlackId }
+          ? {
+              destinataireSlackId: input.nouveauDestinataireSlackId,
+              langueDestinataire: langueDelegue ?? "fr",
+            }
           : {}),
         version: { increment: 1 },
       },
