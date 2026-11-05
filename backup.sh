@@ -1,13 +1,22 @@
-#!/bin/bash
-# Créer un dossier de sauvegarde
+#!/usr/bin/env bash
+# Sauvegarde les quatre bases PostgreSQL de l'infrastructure.
+set -euo pipefail
+
 mkdir -p backups
+suffixe=$(date +%Y-%m-%d)
 
-echo "Début de la sauvegarde..."
+sauvegarder() {
+  conteneur=$1
+  utilisateur=$2
+  base=$3
+  echo "Sauvegarde de ${base}..."
+  docker exec -t "${conteneur}" pg_dump -U "${utilisateur}" -d "${base}" \
+    > "backups/${base}_${suffixe}.sql"
+}
 
-# Sauvegarder la base courrier_db
-docker exec -t $(docker ps -qf "name=postgres") pg_dump -U postgres courrier_db > backups/courrier_db_$(date +%Y-%m-%d).sql
+sauvegarder postgres-courrier courrier courrier_db
+sauvegarder postgres-workflow workflow workflow_db
+sauvegarder postgres-ia ia ia_db
+sauvegarder postgres-notification notification notification_db
 
-# Sauvegarder la base workflow_db
-docker exec -t $(docker ps -qf "name=postgres") pg_dump -U postgres workflow_db > backups/workflow_db_$(date +%Y-%m-%d).sql
-
-echo "Sauvegarde terminée avec succès !"
+echo "Sauvegarde terminée : fichiers dans backups/."

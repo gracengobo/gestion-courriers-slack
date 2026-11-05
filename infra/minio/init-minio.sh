@@ -1,6 +1,11 @@
 #!/bin/sh
-# Script pour créer le bucket "scans" au démarrage
-sleep 5
-mc alias set myminio http://minio:9000 minioadmin minioadmin123
-mc mb myminio/scans
-exit 0
+# Crée le bucket "scans" dès que MinIO répond.
+set -eu
+
+until mc alias set myminio http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+  echo "Attente de MinIO..."
+  sleep 2
+done
+
+mc mb --ignore-existing myminio/scans
+echo "Bucket scans prêt."
