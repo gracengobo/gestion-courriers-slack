@@ -21,3 +21,23 @@ model Courrier {
 
   @@map("courriers")
 }
+
+model CompteurCourrier {
+  annee         Int @id
+  dernierNumero Int
+
+  @@map("compteurs_courrier")
+}
+
+model JournalAudit {
+  id         String   @id @default(uuid())
+  action     String
+  courrierId String
+  numero     String
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([courrierId, createdAt])
+  @@index([numero, createdAt])
+  @@map("journal_audit")
+}

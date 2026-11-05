@@ -5,6 +5,8 @@ package courrier;
 service CourrierService {
   rpc CreateCourrier (CreateCourrierRequest) returns (CourrierResponse);
   rpc GetCourrier (GetCourrierRequest) returns (CourrierResponse);
+  rpc UpdateCourrier (UpdateCourrierRequest) returns (CourrierResponse);
+  rpc SearchCourriers (SearchCourriersRequest) returns (SearchCourriersResponse);
 }
 
 message CreateCourrierRequest {
@@ -19,6 +21,20 @@ message GetCourrierRequest {
   string numero = 1;
 }
 
+message UpdateCourrierRequest {
+  string numero = 1;
+  string objet = 2;
+  string expediteur = 3;
+  string destinataire = 4;
+  string contenu = 5;
+  string pieceJointeUrl = 6;
+}
+
+message SearchCourriersRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
 message CourrierResponse {
   string id = 1;
   string numero = 2;
@@ -27,4 +43,8 @@ message CourrierResponse {
   string destinataire = 5;
   string statut = 6;
   string createdAt = 7;
+}
+
+message SearchCourriersResponse {
+  repeated CourrierResponse courriers = 1;
 }
