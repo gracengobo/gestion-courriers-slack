@@ -11,6 +11,14 @@ import {
 } from "./grpc";
 import { errorMessage } from "./messages";
 import { AttachmentStorage } from "./storage";
+import { notifierUtilisateur } from "./notify";
+import {
+  appliquerStatuts,
+  dernierStatut,
+  formatCourriers,
+  resumeDerniereAction,
+  type EntreeHistorique,
+} from "./affichage";
 
 const STATUS_ACTIONS = [
   "accuser_reception",
@@ -22,6 +30,8 @@ const STATUS_ACTIONS = [
   "signaler_erreur",
 ] as const;
 const ASSIGN_ACTIONS = ["valider_affectation", "modifier_affectation"] as const;
+// L'interpretation IA peut prendre plusieurs secondes
+const DELAI_RECHERCHE_IA_MS = 10_000;
 type StatusAction = (typeof STATUS_ACTIONS)[number];
 type AssignmentAction = (typeof ASSIGN_ACTIONS)[number];
 type Locale = "fr" | "en";
@@ -42,7 +52,7 @@ interface ModalValues {
       selected_option?: { value: string };
       selected_options?: Array<{ value: string }>;
       selected_date?: string;
-      selected_files?: Array<{ id: string }>;
+      files?: Array<{ id: string }>;
     };
   };
 }
@@ -96,7 +106,7 @@ function parseMetadata(value: string): ModalContext {
 }
 
 function getAttachmentId(values: ModalValues): string | undefined {
-  const selected = values["attachment_block"]?.attachment?.selected_files;
+  const selected = values["attachment_block"]?.attachment?.files;
   if (selected && selected.length > 1) {
     throw new Error("Une seule pièce jointe peut être ajoutée.");
   }
@@ -107,35 +117,39 @@ function safeNumber(value: number | undefined): number {
   return Number.isFinite(value) ? Number(value) : 0;
 }
 
-function formatCourriers(
-  items: Array<{ numero: string; objet: string; statut?: string; priorite?: string; echeance?: string }>,
-): string {
-  if (!items.length) return "Aucun courrier trouvé.";
-  return items
-    .slice(0, 20)
-    .map((item) => `• *${item.numero}* — ${item.objet || "Sans objet"} · ${item.statut ?? "Statut indisponible"}${item.echeance ? ` · échéance ${item.echeance}` : ""}`)
-    .join("\n");
-}
+async function chargerStatuts(
+  services: GrpcServices,
+  acteurSlackId: string,
+  numeros: readonly string[],
+): Promise<Map<string, string>> {
+  const statuts = new Map<string, string>();
+  if (!numeros.length) return statuts;
 
-async function postEphemeral(
-  client: WebClient,
-  channelId: string,
-  userId: string,
-  message: string,
-): Promise<void> {
-  try {
-    await client.chat.postEphemeral({ channel: channelId, user: userId, text: message });
-  } catch (error) {
-    if (!isSlackApiError(error, "not_in_channel")) throw error;
-
-    console.warn(`[gateway] bot absent du canal ${channelId}; envoi de la confirmation en message privé`);
-    const conversation = await client.conversations.open({ users: userId });
-    const dmChannelId = conversation.channel?.id;
-    if (!dmChannelId) {
-      throw new Error("Impossible d’ouvrir le message privé Slack pour transmettre la confirmation.");
+  const reponses = await Promise.allSettled(
+    numeros.map((numero) =>
+      callGrpc(services.workflow.ObtenirHistorique.bind(services.workflow), {
+        numero,
+        acteurSlackId,
+      }),
+    ),
+  );
+  let echecs = 0;
+  reponses.forEach((reponse, index) => {
+    const numero = numeros[index];
+    if (!numero) return;
+    if (reponse.status === "fulfilled") {
+      const statut = dernierStatut(reponse.value.entrees as EntreeHistorique[]);
+      if (statut !== "INCONNU") statuts.set(numero, statut);
+      return;
     }
-    await client.chat.postMessage({ channel: dmChannelId, text: message });
+    echecs += 1;
+  });
+  if (echecs > 0) {
+    console.warn(
+      `[gateway] statut indisponible pour ${echecs}/${numeros.length} courrier(s); Workflow injoignable ou en erreur`,
+    );
   }
+  return statuts;
 }
 
 function openModal(
@@ -294,11 +308,15 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
           let filters: InterpreterRechercheResponse;
           let interpreterUnavailable = false;
           try {
-            filters = await callGrpc(services.ia.InterpreterRecherche.bind(services.ia), {
-              acteurSlackId: actorSlackId,
-              phrase: query,
-              langue: language,
-            });
+            filters = await callGrpc(
+              services.ia.InterpreterRecherche.bind(services.ia),
+              {
+                acteurSlackId: actorSlackId,
+                phrase: query,
+                langue: language,
+              },
+              DELAI_RECHERCHE_IA_MS,
+            );
           } catch (error) {
             if (!isGrpcStatus(error, grpc.status.UNIMPLEMENTED)) throw error;
             interpreterUnavailable = true;
@@ -328,7 +346,15 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
           const notice = interpreterUnavailable
             ? "Interprétation IA indisponible; recherche textuelle simple.\n"
             : "";
-          await respond({ response_type: "ephemeral", text: notice + formatCourriers(result.courriers) });
+          const statuts = await chargerStatuts(
+            services,
+            actorSlackId,
+            result.courriers.map((courrier) => courrier.numero),
+          );
+          await respond({
+            response_type: "ephemeral",
+            text: notice + formatCourriers(appliquerStatuts(result.courriers, statuts)),
+          });
           return;
         }
         case "statut": {
@@ -347,10 +373,16 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
               acteurSlackId: actorSlackId,
             }),
           ]);
-          const latestStatus = history.entrees.at(-1)?.statut ?? "INCONNU";
+          const entrees = history.entrees as EntreeHistorique[];
+          const details = [
+            `Statut : *${dernierStatut(entrees)}* · Priorité : ${courrier.priorite || "NORMALE"} · Type : ${courrier.type || "ENTRANT"}`,
+            `Expéditeur : ${courrier.expediteur || "inconnu"}${courrier.serviceCode ? ` · Service : ${courrier.serviceCode}` : ""}`,
+            courrier.destinataireSlackId ? `Destinataire : <@${courrier.destinataireSlackId}>` : "",
+            `Dernière action : ${resumeDerniereAction(entrees[entrees.length - 1])}`,
+          ].filter(Boolean);
           await respond({
             response_type: "ephemeral",
-            text: `*${courrier.numero}* — ${courrier.objet}\nStatut : *${latestStatus}* · Priorité : ${courrier.priorite}`,
+            text: `*${courrier.numero}* — ${courrier.objet}\n${details.join("\n")}`,
           });
           return;
         }
@@ -359,7 +391,10 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
             services.workflow.ListerCourriersDuDestinataire.bind(services.workflow),
             { acteurSlackId: actorSlackId, limite: 20 },
           );
-          await respond({ response_type: "ephemeral", text: formatCourriers(result.courriers) });
+          await respond({
+            response_type: "ephemeral",
+            text: `*Courriers à traiter*\n${formatCourriers(result.courriers, "Aucun courrier à traiter.")}`,
+          });
           return;
         }
         case "stats": {
@@ -476,7 +511,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
           );
         } catch (error) {
           console.error(`[gateway] ouverture du formulaire ${actionId} échouée: ${error instanceof Error ? error.message : String(error)}`);
-          await postEphemeral(client, channelId, actorSlackId, errorMessage(error));
+          await notifierUtilisateur(client, channelId, actorSlackId, errorMessage(error));
         }
         return;
       }
@@ -527,7 +562,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
         throw error;
       }
       try {
-        await postEphemeral(client, context.channelId, context.actorSlackId, `Courrier créé : *${numero}*.`);
+        await notifierUtilisateur(client, context.channelId, context.actorSlackId, `Courrier créé : *${numero}*.`);
       } catch (notificationError) {
         console.error(
           `[gateway] courrier ${numero} créé, mais confirmation Slack impossible: ${notificationError instanceof Error ? notificationError.message : String(notificationError)}`,
@@ -537,7 +572,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
       const userId = body.user.id;
       const channelId = safeMetadataChannel(view.private_metadata);
       console.error(`[gateway] création de courrier échouée: ${error instanceof Error ? error.message : String(error)}`);
-      if (channelId) await postEphemeral(client, channelId, userId, errorMessage(error));
+      if (channelId) await notifierUtilisateur(client, channelId, userId, errorMessage(error));
     }
   });
 
@@ -557,7 +592,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
     } catch (error) {
       console.error(`[gateway] changement de statut échoué: ${error instanceof Error ? error.message : String(error)}`);
       const context = safeParseMetadata(view.private_metadata);
-      if (context) await postEphemeral(client, context.channelId, context.actorSlackId, errorMessage(error));
+      if (context) await notifierUtilisateur(client, context.channelId, context.actorSlackId, errorMessage(error));
     }
   });
 
@@ -584,7 +619,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
         serviceCode,
         motif: reason,
       });
-      await postEphemeral(
+      await notifierUtilisateur(
         client,
         context.channelId,
         context.actorSlackId,
@@ -593,7 +628,7 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
     } catch (error) {
       console.error(`[gateway] affectation échouée: ${error instanceof Error ? error.message : String(error)}`);
       const context = safeParseMetadata(view.private_metadata);
-      if (context) await postEphemeral(client, context.channelId, context.actorSlackId, errorMessage(error));
+      if (context) await notifierUtilisateur(client, context.channelId, context.actorSlackId, errorMessage(error));
     }
   });
 
@@ -629,7 +664,7 @@ async function handleAssignmentAction(
     );
   } catch (error) {
     console.error(`[gateway] ouverture du formulaire d’affectation échouée: ${error instanceof Error ? error.message : String(error)}`);
-    await postEphemeral(args.client, channelId, args.body.user.id, errorMessage(error));
+    await notifierUtilisateur(args.client, channelId, args.body.user.id, errorMessage(error));
   }
 }
 
@@ -658,10 +693,10 @@ async function performStatusChange(
       nouveauDestinataireSlackId: details.nouveauDestinataireSlackId ?? "",
     };
     const result = await callGrpc(services.workflow.ChangerStatut.bind(services.workflow), request);
-    await postEphemeral(client, channelId, actorSlackId, `Courrier *${result.numero}* : ${result.nouveauStatut}.`);
+    await notifierUtilisateur(client, channelId, actorSlackId, `Courrier *${result.numero}* : ${result.nouveauStatut}.`);
   } catch (error) {
     console.error(`[gateway] action ${action} pour ${numero} échouée: ${error instanceof Error ? error.message : String(error)}`);
-    await postEphemeral(client, channelId, actorSlackId, errorMessage(error));
+    await notifierUtilisateur(client, channelId, actorSlackId, errorMessage(error));
   }
 }
 
@@ -679,17 +714,6 @@ function isGrpcStatus(error: unknown, status: grpc.status): error is grpc.Servic
     "code" in error &&
     typeof error.code === "number" &&
     error.code === status
-  );
-}
-
-function isSlackApiError(error: unknown, errorCode: string): boolean {
-  if (typeof error !== "object" || error === null || !("data" in error)) return false;
-  const data = error.data;
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "error" in data &&
-    data.error === errorCode
   );
 }
 
