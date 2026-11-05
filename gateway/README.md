@@ -4,11 +4,12 @@ La passerelle utilise Slack Bolt en Socket Mode. Elle ne contient pas de logique
 
 ## Préparation
 
-1. Copier `.env.example` en `.env` et renseigner les jetons Slack. Créer une application Slack avec Socket Mode activé, le bot token scopes requis (`commands`, `chat:write`, `files:read`) et une commande `/courrier`.
+1. Copier `.env.example` en `.env` et renseigner les jetons Slack. Créer une application Slack avec Socket Mode activé, le bot token scopes requis (`commands`, `chat:write`, `files:read`, `im:write`) et une commande `/courrier`. Réinstaller l’application après avoir changé ses scopes.
 2. Depuis le dossier `gateway`, lancer `npm install`, puis `npm run dev`. Pour produire la version exécutable : `npm run build`, puis `npm start`.
 3. Le Gateway attend les services aux adresses gRPC configurées et MinIO avec le bucket `scans` déjà initialisé par l’infrastructure.
 
 Les pièces jointes de création sont limitées à 10 Mo et aux PDF/JPG/PNG. Elles sont transférées vers MinIO avec une clé aléatoire datée; seul leur emplacement et leur empreinte sont communiqués au Service Courrier.
+Si le bot n’est pas membre du canal de la commande, les confirmations sont envoyées au demandeur en message privé (`im:write`).
 
 ## Commandes et interactions
 

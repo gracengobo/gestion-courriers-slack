@@ -123,7 +123,19 @@ async function postEphemeral(
   userId: string,
   message: string,
 ): Promise<void> {
-  await client.chat.postEphemeral({ channel: channelId, user: userId, text: message });
+  try {
+    await client.chat.postEphemeral({ channel: channelId, user: userId, text: message });
+  } catch (error) {
+    if (!isSlackApiError(error, "not_in_channel")) throw error;
+
+    console.warn(`[gateway] bot absent du canal ${channelId}; envoi de la confirmation en message privé`);
+    const conversation = await client.conversations.open({ users: userId });
+    const dmChannelId = conversation.channel?.id;
+    if (!dmChannelId) {
+      throw new Error("Impossible d’ouvrir le message privé Slack pour transmettre la confirmation.");
+    }
+    await client.chat.postMessage({ channel: dmChannelId, text: message });
+  }
 }
 
 function openModal(
@@ -514,7 +526,13 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
         }
         throw error;
       }
-      await postEphemeral(client, context.channelId, context.actorSlackId, `Courrier créé : *${numero}*.`);
+      try {
+        await postEphemeral(client, context.channelId, context.actorSlackId, `Courrier créé : *${numero}*.`);
+      } catch (notificationError) {
+        console.error(
+          `[gateway] courrier ${numero} créé, mais confirmation Slack impossible: ${notificationError instanceof Error ? notificationError.message : String(notificationError)}`,
+        );
+      }
     } catch (error) {
       const userId = body.user.id;
       const channelId = safeMetadataChannel(view.private_metadata);
@@ -661,6 +679,17 @@ function isGrpcStatus(error: unknown, status: grpc.status): error is grpc.Servic
     "code" in error &&
     typeof error.code === "number" &&
     error.code === status
+  );
+}
+
+function isSlackApiError(error: unknown, errorCode: string): boolean {
+  if (typeof error !== "object" || error === null || !("data" in error)) return false;
+  const data = error.data;
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "error" in data &&
+    data.error === errorCode
   );
 }
 
