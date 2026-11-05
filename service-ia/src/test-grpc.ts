@@ -28,6 +28,7 @@ await montrer("analyse existante", "obtenirAnalyse", { acteurSlackId: "U02DEF45"
 await montrer("analyse inconnue", "obtenirAnalyse", { acteurSlackId: "U02DEF45", numero: "CE-2026-0000" });
 await montrer("decision VALIDEE", "enregistrerDecision", { acteurSlackId: "U03GHI67", numero: "CE-2026-0044", decision: "VALIDEE" });
 await montrer("correction sans rien", "enregistrerDecision", { acteurSlackId: "U03GHI67", numero: "CE-2026-0044", decision: "CORRIGEE" });
-await montrer("recherche (pas encore dispo)", "interpreterRecherche", { acteurSlackId: "U02DEF45", phrase: "courriers urgents", langue: "fr" });
+await montrer("recherche en langage courant", "interpreterRecherche", { acteurSlackId: "U02DEF45", phrase: "courriers urgents", langue: "fr" });
+await montrer("recherche sans phrase", "interpreterRecherche", { acteurSlackId: "U02DEF45", phrase: "  ", langue: "fr" });
 
 client.close();

@@ -3,6 +3,7 @@ import protoLoader from "@grpc/proto-loader";
 import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
 import { enregistrerDecision, lireAnalyse } from "./db.js";
+import { interpreterRecherche } from "./recherche.js";
 
 // Pour l'instant on lit la proposition. Quand ia.proto sera dans proto/, on change ce chemin.
 const CHEMIN_PROTO = fileURLToPath(new URL("../proposition-proto/ia.proto", import.meta.url));
@@ -110,12 +111,36 @@ async function enregistrerDecisionGrpc(call: any, callback: any) {
   }
 }
 
-// A brancher quand la partie de B (recherche.ts) sera en ligne
-function interpreterRecherche(_call: any, callback: any) {
-  callback({
-    code: grpc.status.UNIMPLEMENTED,
-    details: "InterpreterRecherche pas encore disponible"
-  });
+async function interpreterRechercheGrpc(call: any, callback: any) {
+  try {
+    const phrase = String(call.request.phrase ?? "").trim();
+    const langueDemandee = String(call.request.langue ?? "").trim().toLowerCase().slice(0, 2);
+    const langue = langueDemandee === "" ? "fr" : langueDemandee;
+
+    if (!phrase) {
+      callback(erreur(grpc.status.INVALID_ARGUMENT, "CHAMP_MANQUANT", "phrase manquante"));
+      return;
+    }
+    if (langue !== "fr" && langue !== "en") {
+      callback(erreur(grpc.status.INVALID_ARGUMENT, "CHAMP_MANQUANT", "langue invalide (fr ou en)"));
+      return;
+    }
+
+    const filtres = await interpreterRecherche(phrase, langue);
+    console.log("[service-ia] InterpreterRecherche (" + langue + ") : " + phrase);
+    callback(null, {
+      motsCles: filtres.motsCles,
+      categorie: filtres.categorie ?? "",
+      serviceCode: filtres.serviceCode ?? "",
+      urgence: filtres.urgence ?? "",
+      statuts: filtres.statuts,
+      dateDebut: filtres.dateDebut ?? "",
+      dateFin: filtres.dateFin ?? ""
+    });
+  } catch (e) {
+    console.error("[service-ia] erreur recherche :", e);
+    callback(erreur(grpc.status.UNAVAILABLE, "SERVICE_INDISPONIBLE", "service indisponible"));
+  }
 }
 
 // Demarre le serveur gRPC
@@ -126,7 +151,7 @@ export function demarrerGrpc() {
   serveur.addService(paquet.IAService.service, {
     obtenirAnalyse: obtenirAnalyse,
     enregistrerDecision: enregistrerDecisionGrpc,
-    interpreterRecherche: interpreterRecherche
+    interpreterRecherche: interpreterRechercheGrpc
   });
 
   const port = config.grpcIaUrl.split(":")[1] ?? "50053";
