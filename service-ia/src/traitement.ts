@@ -1,6 +1,6 @@
 import type { Channel } from "amqplib";
 import type { DonneesAnalyse, Enveloppe } from "./types.js";
-import { analyserTexte } from "./contrat-analyse.js";
+import { analyserTexte } from "./llm.js";
 import { lireScan } from "./storage.js";
 import { extraireTexte } from "./ocr.js";
 import { publierAnalyse } from "./publisher.js";

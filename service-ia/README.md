@@ -26,7 +26,13 @@ npm run dev
 ## Configuration
 
 Les variables sont dans `.env.example`. Le vrai `.env` n'est jamais envoye sur Git.
-La cle `IA_API_KEY` (Gemini) est necessaire seulement quand la vraie analyse sera branchee.
+La cle `IA_API_KEY` est necessaire pour l'analyse.
+
+Fournisseur par defaut : Groq (`IA_FOURNISSEUR=groq`), modele `llama-3.3-70b-versatile`,
+appele par l'API compatible OpenAI (`https://api.groq.com/openai/v1`).
+Gemini reste disponible avec `IA_FOURNISSEUR=gemini` (`gemini-flash-latest`).
+On peut changer le modele avec `IA_MODELE` et l'adresse avec `IA_BASE_URL`.
+Chaque appel est borne a 15 secondes (`IA_DELAI_MS`) et tente 2 fois (`IA_TENTATIVES`).
 
 ## Tester seul
 
@@ -61,7 +67,13 @@ Le dossier `scans-test` n'est pas dans Git : il faut y mettre une image PNG avec
 | `src/ocr.ts` | Lecture du texte (Tesseract pour les images, unpdf pour les PDF) |
 | `src/db.ts` | Base `ia_db` |
 | `src/publisher.ts` | Publie `courrier.analyse` |
-| `src/contrat-analyse.ts` | Contrat avec la partie analyse (`analyserTexte`) |
+| `src/contrat-analyse.ts` | Types du contrat avec la partie analyse |
+| `src/prompts.ts` | Consignes envoyees au modele (analyse et recherche) |
+| `src/validation.ts` | Verification du JSON renvoye par le modele |
+| `src/llm.ts` | Appel du modele (Groq ou Gemini), delai, tentatives, `analyserTexte` |
+| `src/recherche.ts` | `interpreterRecherche` : phrase en langage courant vers filtres (BF-44) |
+| `src/test-analyse.ts` | Test de l'analyse sans RabbitMQ ni MinIO |
+| `src/test-recherche.ts` | Test de la recherche en langage courant |
 | `sql/schema.sql` | Tables de `ia_db` |
 
 ## Regles du service
@@ -83,8 +95,20 @@ Pour tester : `npm run dev` dans un terminal, puis `npx tsx src/test-grpc.ts` da
 
 Le controle des droits (`DROIT_INSUFFISANT`) n'est pas fait ici : les roles sont dans le Service Workflow.
 
+## Analyse IA
+
+Sans infrastructure, dans ce dossier :
+
+```
+npx tsx src/test-analyse.ts
+npx tsx src/test-recherche.ts
+```
+
+Les deux scripts affichent le resultat de chaque cas et sortent en erreur si un appel echoue.
+`analyserTexte` lance une erreur si le modele ne repond pas ou si le JSON est invalide :
+le service publie alors `courrier.analyse` avec `statutAnalyse = "echec"`.
+
 ## A faire
 
-- Brancher la vraie analyse (Gemini) a la place de la version de test de `analyserTexte`.
-- Brancher `InterpreterRecherche` (partie B).
+- Brancher `InterpreterRecherche` dans `grpc.ts` (partie A).
 - Remplacer `proposition-proto/` par `proto/ia.proto` quand le binome 2 l'aura valide.
