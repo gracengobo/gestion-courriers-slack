@@ -1,0 +1,27 @@
+name: Tests et Vérification du Code
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Récupérer le code
+      uses: actions/checkout@v4
+
+    - name: Installer Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Installer les dépendances
+      run: npm ci
+
+    - name: Lancer les tests (si vous en avez)
+      run: npm test --if-present
