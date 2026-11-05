@@ -13,7 +13,7 @@
     "@grpc/grpc-js": "^1.11.0",
     "@grpc/proto-loader": "^0.7.13",
     "@prisma/client": "^5.19.0",
-    "amqplib": "^3.0.0",
+    "amqplib": "^2.2.1",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {

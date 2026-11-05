@@ -1,0 +1,16 @@
+ALTER TABLE "courriers"
+  ALTER COLUMN "destinataire" DROP NOT NULL,
+  ALTER COLUMN "statut" SET DEFAULT 'ENREGISTRE',
+  ADD COLUMN "type" TEXT NOT NULL DEFAULT 'ENTRANT',
+  ADD COLUMN "dateCourrier" TEXT,
+  ADD COLUMN "priorite" TEXT NOT NULL DEFAULT 'NORMALE',
+  ADD COLUMN "confidentiel" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN "serviceCode" TEXT,
+  ADD COLUMN "agentSlackId" TEXT,
+  ADD COLUMN "langueDestinataire" TEXT NOT NULL DEFAULT 'fr',
+  ADD COLUMN "pieceJointeBucket" TEXT,
+  ADD COLUMN "pieceJointeCle" TEXT,
+  ADD COLUMN "pieceJointeNomOriginal" TEXT,
+  ADD COLUMN "pieceJointeTypeMime" TEXT,
+  ADD COLUMN "pieceJointeTailleOctets" BIGINT,
+  ADD COLUMN "pieceJointeEmpreinteSha256" TEXT;

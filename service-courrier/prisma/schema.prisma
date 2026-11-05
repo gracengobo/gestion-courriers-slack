@@ -8,16 +8,29 @@ datasource db {
 }
 
 model Courrier {
-  id             String   @id @default(uuid())
-  numero         String   @unique
-  objet          String
-  expediteur     String
-  destinataire   String
-  contenu        String?
-  pieceJointeUrl String?
-  statut         String   @default("RECU")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                       String   @id @default(uuid())
+  numero                   String   @unique
+  type                     String   @default("ENTRANT")
+  objet                    String
+  expediteur               String
+  destinataire             String?
+  contenu                  String?
+  pieceJointeUrl           String?
+  dateCourrier             String?
+  priorite                 String   @default("NORMALE")
+  confidentiel             Boolean  @default(false)
+  serviceCode              String?
+  agentSlackId             String?
+  langueDestinataire       String   @default("fr")
+  pieceJointeBucket        String?
+  pieceJointeCle           String?
+  pieceJointeNomOriginal   String?
+  pieceJointeTypeMime      String?
+  pieceJointeTailleOctets  BigInt?
+  pieceJointeEmpreinteSha256 String?
+  statut                   String   @default("ENREGISTRE")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
   @@map("courriers")
 }

@@ -90,18 +90,20 @@ npm start
 
 ## Contrat gRPC
 
-Le contrat est défini dans [`proto/courrier.proto`](./proto/courrier.proto),
-service `courrier.CourrierService` :
+Le contrat est défini dans [`proto/courrier.proto`](./proto/courrier.proto) et
+doit rester identique à `proto/courrier.proto` à la racine du dépôt. Le service
+`courrier.v1.CourrierService` expose :
 
 | Méthode | Fonction |
 | --- | --- |
-| `CreateCourrier` | Crée un courrier et retourne ses informations. |
-| `GetCourrier` | Consulte un courrier avec son numéro. |
-| `UpdateCourrier` | Modifie un courrier identifié par son numéro. |
-| `SearchCourriers` | Recherche par numéro, expéditeur ou objet. |
+| `CreerCourrier` | Crée un courrier et retourne son numéro. |
+| `ObtenirCourrier` | Consulte un courrier avec son numéro. |
+| `CorrigerCourrier` | Corrige un courrier identifié par son numéro. |
+| `RechercherCourriers` | Recherche par critères et retourne les courriers correspondants. |
 
-`SearchCourriers` reçoit `query` et un `limit` facultatif ; une recherche vide
-est refusée. `CreateCourrier` requiert `objet`, `expediteur` et `destinataire`.
+`CreerCourrier` requiert un objet et un expéditeur. Le destinataire Slack et la
+pièce jointe sont facultatifs. Les erreurs gRPC transportent leur code métier
+dans la métadonnée `code-metier`.
 
 ## Structure utile
 
