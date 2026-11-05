@@ -12,6 +12,13 @@ import {
 import { errorMessage } from "./messages";
 import { AttachmentStorage } from "./storage";
 import { notifierUtilisateur } from "./notify";
+import {
+  appliquerStatuts,
+  dernierStatut,
+  formatCourriers,
+  resumeDerniereAction,
+  type EntreeHistorique,
+} from "./affichage";
 
 const STATUS_ACTIONS = [
   "accuser_reception",
@@ -110,14 +117,39 @@ function safeNumber(value: number | undefined): number {
   return Number.isFinite(value) ? Number(value) : 0;
 }
 
-function formatCourriers(
-  items: Array<{ numero: string; objet: string; statut?: string; priorite?: string; echeance?: string }>,
-): string {
-  if (!items.length) return "Aucun courrier trouvé.";
-  return items
-    .slice(0, 20)
-    .map((item) => `• *${item.numero}* — ${item.objet || "Sans objet"} · ${item.statut ?? "Statut indisponible"}${item.echeance ? ` · échéance ${item.echeance}` : ""}`)
-    .join("\n");
+async function chargerStatuts(
+  services: GrpcServices,
+  acteurSlackId: string,
+  numeros: readonly string[],
+): Promise<Map<string, string>> {
+  const statuts = new Map<string, string>();
+  if (!numeros.length) return statuts;
+
+  const reponses = await Promise.allSettled(
+    numeros.map((numero) =>
+      callGrpc(services.workflow.ObtenirHistorique.bind(services.workflow), {
+        numero,
+        acteurSlackId,
+      }),
+    ),
+  );
+  let echecs = 0;
+  reponses.forEach((reponse, index) => {
+    const numero = numeros[index];
+    if (!numero) return;
+    if (reponse.status === "fulfilled") {
+      const statut = dernierStatut(reponse.value.entrees as EntreeHistorique[]);
+      if (statut !== "INCONNU") statuts.set(numero, statut);
+      return;
+    }
+    echecs += 1;
+  });
+  if (echecs > 0) {
+    console.warn(
+      `[gateway] statut indisponible pour ${echecs}/${numeros.length} courrier(s); Workflow injoignable ou en erreur`,
+    );
+  }
+  return statuts;
 }
 
 function openModal(
@@ -314,7 +346,15 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
           const notice = interpreterUnavailable
             ? "Interprétation IA indisponible; recherche textuelle simple.\n"
             : "";
-          await respond({ response_type: "ephemeral", text: notice + formatCourriers(result.courriers) });
+          const statuts = await chargerStatuts(
+            services,
+            actorSlackId,
+            result.courriers.map((courrier) => courrier.numero),
+          );
+          await respond({
+            response_type: "ephemeral",
+            text: notice + formatCourriers(appliquerStatuts(result.courriers, statuts)),
+          });
           return;
         }
         case "statut": {
@@ -333,10 +373,16 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
               acteurSlackId: actorSlackId,
             }),
           ]);
-          const latestStatus = history.entrees.at(-1)?.statut ?? "INCONNU";
+          const entrees = history.entrees as EntreeHistorique[];
+          const details = [
+            `Statut : *${dernierStatut(entrees)}* · Priorité : ${courrier.priorite || "NORMALE"} · Type : ${courrier.type || "ENTRANT"}`,
+            `Expéditeur : ${courrier.expediteur || "inconnu"}${courrier.serviceCode ? ` · Service : ${courrier.serviceCode}` : ""}`,
+            courrier.destinataireSlackId ? `Destinataire : <@${courrier.destinataireSlackId}>` : "",
+            `Dernière action : ${resumeDerniereAction(entrees[entrees.length - 1])}`,
+          ].filter(Boolean);
           await respond({
             response_type: "ephemeral",
-            text: `*${courrier.numero}* — ${courrier.objet}\nStatut : *${latestStatus}* · Priorité : ${courrier.priorite}`,
+            text: `*${courrier.numero}* — ${courrier.objet}\n${details.join("\n")}`,
           });
           return;
         }
@@ -345,7 +391,10 @@ export function createApp(services: GrpcServices, storage: AttachmentStorage): A
             services.workflow.ListerCourriersDuDestinataire.bind(services.workflow),
             { acteurSlackId: actorSlackId, limite: 20 },
           );
-          await respond({ response_type: "ephemeral", text: formatCourriers(result.courriers) });
+          await respond({
+            response_type: "ephemeral",
+            text: `*Courriers à traiter*\n${formatCourriers(result.courriers, "Aucun courrier à traiter.")}`,
+          });
           return;
         }
         case "stats": {

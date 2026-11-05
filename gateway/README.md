@@ -17,13 +17,21 @@ Les confirmations et les erreurs sont envoyées en message éphémère dans le c
 
 - `/courrier nouveau`, `/courrier sortant`, `/courrier interne` : formulaire de création.
 - `/courrier chercher <mots>`, `/courrier statut <numero>`, `/courrier analyse <numero>`, `/courrier decision <numero> VALIDEE|CORRIGEE|REJETEE [categorie] [service]`, `/courrier mes-courriers`, `/courrier stats`, `/courrier langue fr|en`, `/courrier aide`.
+- `/courrier chercher` croise `RechercherCourriers` (Service Courrier) et `ObtenirHistorique` (Workflow) pour afficher le statut de chaque résultat, conformément à la décision du contrat. Si le Workflow est indisponible, la recherche affiche « Statut indisponible » sans échouer.
+- `/courrier statut` affiche le statut courant, la priorité, le type, le service, le destinataire et la dernière action (date UTC et commentaire ou motif).
+- `/courrier mes-courriers` et `/courrier stats` lisent directement `ListerCourriersDuDestinataire` et `ObtenirStatistiques` du Workflow ; les échéances sont affichées en date UTC lisible.
 - La décision `CORRIGEE` attend au moins une catégorie ou un code de service final. Les filtres de statut et d’urgence interprétés par l’IA restent en attente des filtres correspondants dans les contrats Courrier/Workflow.
 - Les actions de statut Slack sont transmises à `WorkflowService.ChangerStatut`. `valider_affectation` et `modifier_affectation` ouvrent le formulaire d’affectation.
 - Pour respecter le contrôle de concurrence du contrat, `ObtenirHistoriqueResponse` expose `versionActuelle`; le Gateway la transmet comme `versionAttendue` à `ChangerStatut`.
 
 ## Vérification
 
-`npm run typecheck` vérifie les sources TypeScript; `npm run build` compile le Gateway. `npx tsx src/test-notify.ts` vérifie sans Slack la transmission des réponses (message éphémère, conversation privée, repli en message privé).
+`npm run typecheck` vérifie les sources TypeScript; `npm run build` compile le Gateway.
+`npm test` exécute les vérifications sans Slack ni base de données :
+- `src/test-notify.ts` : message éphémère, conversation privée, repli en message privé ;
+- `src/test-affichage.ts` : fusion des statuts, format des dates et des échéances ;
+- `src/test-workflow.ts` : contrat gRPC avec un faux serveur Workflow calqué sur celui du binôme 4 (champs camelCase côté client, `keepCase` côté serveur).
+
 Pour construire l’image depuis la racine du dépôt : `docker build -f gateway/Dockerfile -t gestion-courriers-gateway .`.
 
 ## Textes d’erreur
