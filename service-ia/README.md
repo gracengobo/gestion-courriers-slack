@@ -28,7 +28,7 @@ npm run dev
 Les variables sont dans `.env.example`. Le vrai `.env` n'est jamais envoye sur Git.
 La cle `IA_API_KEY` est necessaire pour l'analyse.
 
-Fournisseur par defaut : Groq (`IA_FOURNISSEUR=groq`), modele `llama-3.3-70b-versatile`,
+Fournisseur par defaut : Groq (`IA_FOURNISSEUR=groq`), modele `openai/gpt-oss-120b`,
 appele par l'API compatible OpenAI (`https://api.groq.com/openai/v1`).
 Gemini reste disponible avec `IA_FOURNISSEUR=gemini` (`gemini-flash-latest`).
 On peut changer le modele avec `IA_MODELE` et l'adresse avec `IA_BASE_URL`.

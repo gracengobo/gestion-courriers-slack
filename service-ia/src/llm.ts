@@ -15,7 +15,7 @@ function nomModele(fournisseur: string): string {
   if (process.env.IA_MODELE) {
     return process.env.IA_MODELE;
   }
-  return fournisseur === "groq" ? "llama-3.3-70b-versatile" : "gemini-flash-latest";
+  return fournisseur === "groq" ? "openai/gpt-oss-120b" : "gemini-flash-latest";
 }
 
 function attendre(ms: number): Promise<void> {

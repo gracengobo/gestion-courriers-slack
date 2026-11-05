@@ -33,6 +33,15 @@ export function normaliserParmi<T extends string>(valeur: unknown, liste: readon
   return trouve ?? null;
 }
 
+// Les langues s'ecrivent en minuscules (fr, en) : normalisation a part
+export function normaliserLangue(valeur: unknown): Langue | null {
+  if (typeof valeur !== "string") {
+    return null;
+  }
+  const propre = valeur.trim().toLowerCase().slice(0, 2);
+  return LANGUES.find((l) => l === propre) ?? null;
+}
+
 function deuxChiffres(n: number): string {
   return n < 10 ? "0" + n : String(n);
 }
@@ -115,7 +124,7 @@ export function validerReponse(brut: unknown, entree: EntreeAnalyse): ResultatAn
     throw new Error("justification manquante");
   }
 
-  const langue = normaliserParmi(r.langueDetectee, LANGUES);
+  const langue = normaliserLangue(r.langueDetectee);
   if (langue === null) {
     throw new Error("langue invalide : " + String(r.langueDetectee));
   }

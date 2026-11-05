@@ -11,7 +11,11 @@ const essais: { nom: string; langue: "fr" | "en"; phrase: string }[] = [
 
 let echecs = 0;
 
-for (const e of essais) {
+for (const [index, e] of essais.entries()) {
+  if (index > 0) {
+    // pause entre les cas pour rester sous le quota gratuit du fournisseur
+    await new Promise((resolve) => setTimeout(resolve, 12000));
+  }
   console.log("--- " + e.nom + " : " + e.phrase);
   try {
     const filtres = await interpreterRecherche(e.phrase, e.langue);
