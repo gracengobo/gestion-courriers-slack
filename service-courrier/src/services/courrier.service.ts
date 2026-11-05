@@ -109,12 +109,36 @@ export async function createCourrier(data: CreateCourrierInput) {
     return created;
   });
 
-  await publishCourrierCree({
-    id: courrier.id,
-    numero: courrier.numero,
-    objet: courrier.objet,
-    destinataire: courrier.destinataire ?? '',
-  });
+  try {
+    await publishCourrierCree({
+      numero: courrier.numero,
+      type: courrier.type,
+      objet: courrier.objet,
+      expediteur: courrier.expediteur,
+      dateCourrier: courrier.dateCourrier,
+      priorite: courrier.priorite,
+      confidentiel: courrier.confidentiel,
+      serviceCode: courrier.serviceCode,
+      destinataireSlackId: courrier.destinataire,
+      agentSlackId: courrier.agentSlackId,
+      pieceJointe: courrier.pieceJointeCle
+        ? {
+            bucket: courrier.pieceJointeBucket ?? '',
+            cle: courrier.pieceJointeCle,
+            nomOriginal: courrier.pieceJointeNomOriginal ?? '',
+            typeMime: courrier.pieceJointeTypeMime ?? '',
+            tailleOctets: Number(courrier.pieceJointeTailleOctets ?? 0),
+            empreinteSha256: courrier.pieceJointeEmpreinteSha256 ?? '',
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error(
+      `[service-courrier] ${courrier.numero} enregistré, mais publication de courrier.cree impossible: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
 
   return courrier;
 }
