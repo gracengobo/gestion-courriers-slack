@@ -90,18 +90,58 @@ npm start
 
 ## Contrat gRPC
 
-Le contrat est défini dans [`proto/courrier.proto`](./proto/courrier.proto),
-service `courrier.CourrierService` :
+Le contrat est défini dans [`proto/courrier.proto`](./proto/courrier.proto) et
+doit rester identique à `proto/courrier.proto` à la racine du dépôt. Le service
+`courrier.v1.CourrierService` expose :
 
 | Méthode | Fonction |
 | --- | --- |
-| `CreateCourrier` | Crée un courrier et retourne ses informations. |
-| `GetCourrier` | Consulte un courrier avec son numéro. |
-| `UpdateCourrier` | Modifie un courrier identifié par son numéro. |
-| `SearchCourriers` | Recherche par numéro, expéditeur ou objet. |
+| `CreerCourrier` | Crée un courrier et retourne son numéro. |
+| `ObtenirCourrier` | Consulte un courrier avec son numéro. |
+| `CorrigerCourrier` | Corrige un courrier identifié par son numéro. |
+| `RechercherCourriers` | Recherche par critères et retourne les courriers correspondants. |
 
-`SearchCourriers` reçoit `query` et un `limit` facultatif ; une recherche vide
-est refusée. `CreateCourrier` requiert `objet`, `expediteur` et `destinataire`.
+`CreerCourrier` requiert un objet et un expéditeur. Le destinataire Slack et la
+pièce jointe sont facultatifs. Les erreurs gRPC transportent leur code métier
+dans la métadonnée `code-metier`.
+
+La recherche porte sur le numéro, l'objet et l'expéditeur, avec filtres de
+service et de période. Les champs `categorie` et `acteurSlackId` du contrat sont
+acceptés mais ignorés : la catégorie appartient au Service IA et le statut au
+Service Workflow. La passerelle affiche donc « Statut indisponible » tant que
+ces services ne sont pas branchés.
+
+## Événement `courrier.cree`
+
+Le service publie sur l'échange `courrier.events` (surchargeable avec
+`RABBITMQ_EXCHANGE`), avec la clé de routage `courrier.cree`, l'enveloppe du
+contrat :
+
+```json
+{
+  "eventId": "7c1f3b9e-5a0d-4d8e-9a77-0c2f8d1b6e44",
+  "type": "courrier.cree",
+  "version": 1,
+  "emisLe": "2026-11-05T09:30:00Z",
+  "emisPar": "service-courrier",
+  "numero": "CE-2026-0042",
+  "donnees": {
+    "type": "ENTRANT",
+    "objet": "Demande de bourse",
+    "expediteur": "Mme Ngo",
+    "dateCourrier": "2026-11-05",
+    "priorite": "NORMALE",
+    "confidentiel": false,
+    "serviceCode": "SCOLARITE",
+    "destinataireSlackId": "U01ABC23",
+    "agentSlackId": "U02DEF45",
+    "pieceJointe": null
+  }
+}
+```
+
+Si RabbitMQ est indisponible, le courrier reste enregistré et l'échec de
+publication est journalisé ; le numéro est tout de même renvoyé à la passerelle.
 
 ## Structure utile
 
@@ -121,6 +161,7 @@ src/prisma.ts                        Client Prisma
 | --- | --- |
 | `npm run dev` | Lance le serveur en développement avec redémarrage automatique. |
 | `npm run build` | Compile TypeScript dans `dist/`. |
+| `npm run typecheck` | Vérifie les types sans produire de fichiers. |
 | `npm start` | Lance la version compilée. |
 | `npm run prisma:generate` | Génère le client Prisma. |
 | `npm run prisma:migrate` | Crée/applique une migration en développement. |
